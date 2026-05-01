@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 
 class OccupantController extends Controller
 {
-    // Tambahkan tipe data OccupantService di sini
     protected OccupantService $occupantService;
 
     public function __construct(OccupantService $occupantService)
@@ -16,7 +15,6 @@ class OccupantController extends Controller
         $this->occupantService = $occupantService;
     }
 
-    // ... method index() dan store() tetap sama seperti sebelumnya ...
     public function index()
     {
         $occupants = $this->occupantService->getAllOccupants();
@@ -43,5 +41,26 @@ class OccupantController extends Controller
             'message' => 'Penghuni berhasil ditambahkan',
             'data' => $occupant
         ], 201);
+    }
+
+// SESUDAH DIPERBAIKI (Tambahkan tipe string pada $id):
+    public function update(Request $request, string $id)
+    {
+        $validatedData = $request->validate([
+            'full_name' => 'sometimes|required|string|max:255',
+            'id_card_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'occupant_status' => 'sometimes|required|in:kontrak,tetap',
+            'phone_number' => 'sometimes|required|string|max:15',
+            'marital_status' => 'sometimes|required|in:menikah,belum_menikah',
+        ]);
+
+        // Cast ke (int) karena OccupantService meminta parameter integer
+        $occupant = $this->occupantService->updateOccupant((int) $id, $validatedData);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Data penghuni berhasil diperbarui',
+            'data' => $occupant
+        ], 200);
     }
 }

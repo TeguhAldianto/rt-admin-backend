@@ -13,47 +13,38 @@ use Faker\Factory as Faker;
 
 class DummyDataSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        // Menggunakan Faker dengan lokal bahasa Indonesia
         $faker = Faker::create('id_ID');
         $currentYear = Carbon::now()->year;
         $currentMonth = Carbon::now()->month;
 
-        // 1. Ambil 15 rumah pertama untuk diisi penghuni secara otomatis
+        // Ambil 15 rumah untuk diisi penghuni tetap (sesuai soal)
         $houses = House::take(15)->get();
 
         foreach ($houses as $house) {
             /** @var \App\Models\House $house */
 
-            // A. Buat Data Penghuni
-            $status = $faker->randomElement(['tetap', 'kontrak']);
+            // Buat Data Penghuni
             $occupant = Occupant::create([
                 'full_name' => $faker->name,
-                'id_card_photo' => null, // Dikosongkan untuk dummy
-                'occupant_status' => $status,
+                'occupant_status' => 'tetap',
                 'phone_number' => $faker->phoneNumber,
                 'marital_status' => $faker->randomElement(['menikah', 'belum_menikah']),
             ]);
 
-            // B. Ubah status rumah menjadi dihuni
+            // Set Rumah jadi Dihuni & Buat Histori
             $house->update(['status' => 'dihuni']);
-
-            // C. Buat History Rumah
             HouseHistory::create([
                 'house_id' => $house->id,
                 'occupant_id' => $occupant->id,
-                // Tanggal masuk acak antara 1 sampai 12 bulan yang lalu
-                'start_date' => Carbon::now()->subMonths(rand(1, 12))->format('Y-m-d'),
+                'start_date' => Carbon::now()->startOfYear()->format('Y-m-d'),
                 'is_active' => true,
             ]);
 
-            // D. Buat Data Pembayaran Iuran (Lunas dari bulan 1 sampai bulan saat ini)
+            // Generate Pembayaran dari Januari s/d Bulan Sekarang
             for ($m = 1; $m <= $currentMonth; $m++) {
-                // Iuran Satpam
+                // Iuran Satpam (100k)
                 Payment::create([
                     'occupant_id' => $occupant->id,
                     'payment_type' => 'satpam',
@@ -61,10 +52,10 @@ class DummyDataSeeder extends Seeder
                     'for_month' => $m,
                     'for_year' => $currentYear,
                     'status' => 'lunas',
-                    'paid_at' => Carbon::createFromDate($currentYear, $m, rand(1, 10))->format('Y-m-d'),
+                    'paid_at' => Carbon::create($currentYear, $m, rand(1, 10))
                 ]);
 
-                // Iuran Kebersihan
+                // Iuran Kebersihan (15k)
                 Payment::create([
                     'occupant_id' => $occupant->id,
                     'payment_type' => 'kebersihan',
@@ -72,28 +63,26 @@ class DummyDataSeeder extends Seeder
                     'for_month' => $m,
                     'for_year' => $currentYear,
                     'status' => 'lunas',
-                    'paid_at' => Carbon::createFromDate($currentYear, $m, rand(1, 10))->format('Y-m-d'),
+                    'paid_at' => Carbon::create($currentYear, $m, rand(1, 10))
                 ]);
             }
         }
 
-        // 2. Buat Data Pengeluaran RT Dummy
-        $expensesList = ['Perbaikan Selokan', 'Beli Lampu Jalan', 'Kas RT', 'Konsumsi Rapat Warga', 'Perbaikan Portal', 'Alat Kebersihan'];
-
+        // Generate Pengeluaran RT (Gaji Satpam & Perbaikan)
         for ($m = 1; $m <= $currentMonth; $m++) {
-            // Pengeluaran pasti: Gaji Satpam per bulan
+            // Gaji Satpam Rutin
             Expense::create([
-                'description' => 'Gaji Satpam Bulan ' . Carbon::create()->month($m)->translatedFormat('F'),
+                'description' => 'Gaji Satpam Bulan ' . $m,
                 'amount' => 1500000,
-                'expense_date' => Carbon::createFromDate($currentYear, $m, 28)->format('Y-m-d'),
+                'expense_date' => Carbon::create($currentYear, $m, 28)
             ]);
 
-            // Pengeluaran acak (50% kemungkinan ada pengeluaran tambahan di bulan tersebut)
+            // Pengeluaran Insidentil (Acak)
             if (rand(0, 1)) {
                 Expense::create([
-                    'description' => $faker->randomElement($expensesList),
-                    'amount' => $faker->numberBetween(5, 50) * 10000, // Nominal acak antara 50.000 s/d 500.000
-                    'expense_date' => Carbon::createFromDate($currentYear, $m, rand(1, 25))->format('Y-m-d'),
+                    'description' => $faker->randomElement(['Perbaikan Lampu Jalan', 'Sedot WC Kas RT', 'Perbaikan Selokan']),
+                    'amount' => $faker->numberBetween(100, 500) * 1000,
+                    'expense_date' => Carbon::create($currentYear, $m, rand(1, 20))
                 ]);
             }
         }
